@@ -1,0 +1,21 @@
+Subtitle Edit Changelog
+
+v5.0.0-beta8 (xth March 2026)
+
+* Use language from installer at first use - thx bovirus
+* Translate about box - thx bovirus
+* Minor spectrogram fixes (you can toggle style live via a shortcut)
+* Add classic/legacy icon theme - thx GrampaWildWilly
+* Add NOcr CaseFixer warmup
+
+-----------------------------------------------------------------------------------------------------
+
+v5.0.0-beta7 (13th March 2026)
+
+* Work on installer - thx bovirus
+* Fix inclusion of Italian and Portuguese translations - thx bovirus
+* Fix for interjections - thx Hunique
+* Fix for ASSA font names - thx Hunique
+* Work on Video -> More -> Open seconds subtitle (not complete) - thx matmaggi
+* Enable gen-transparent-video with no subtitles (start in batch mode)
+* Work on OCR fix/replace lists

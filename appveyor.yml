@@ -1,47 +1,31 @@
-﻿version: "{build}"
-
+version: 5.0.{build}
 image: Visual Studio 2022
 
-platform:
-  - Any CPU
+# Ensure we have the .NET 10 SDK
+install:
+  - ps: Invoke-WebRequest -Uri "https://dot.net/v1/dotnet-install.ps1" -OutFile "dotnet-install.ps1"
+  - ps: ./dotnet-install.ps1 -Version 10.0.100 -InstallDir "C:\Program Files\dotnet"
 
-configuration:
-  - Release
+configuration: Release
+
+before_build:
+  - dotnet restore SubtitleEdit.sln
 
 build_script:
-  - msbuild "SubtitleEdit.sln" /r /v:minimal /clp:summary /p:"Platform=%PLATFORM%" /p:"Configuration=%CONFIGURATION%" /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
-
-test_script_pre:
-  - ps: |
-      Write-Host "=== 📁 Listing test output directory ==="
-      Get-ChildItem "src\Tests\bin\$env:CONFIGURATION" -Recurse | ForEach-Object {
-        Write-Host $_.FullName
-      }
-
-  # Try to find and copy libSkiaSharp.dll
-  - ps: |
-      Write-Host "=== 🔍 Searching for libSkiaSharp.dll under /src ==="
-      $target = "src\Tests\bin\$env:CONFIGURATION"
-      $dlls = Get-ChildItem -Recurse -Filter libSkiaSharp.dll src -ErrorAction SilentlyContinue
-
-      if ($dlls.Count -eq 0) {
-        Write-Host "❌ libSkiaSharp.dll not found under 'src'."
-        Get-ChildItem -Recurse -Filter *.dll src | ForEach-Object {
-          Write-Host "📦 Found other DLL: $($_.FullName)"
-        }
-      } else {
-        foreach ($dll in $dlls) {
-          Write-Host "✅ Found: $($dll.FullName)"
-          Copy-Item $dll.FullName $target -Force
-          Write-Host "📥 Copied to $target"
-        }
-      }
+  # Using MSBuild with the AppVeyor logger to track progress in the UI
+  - msbuild SubtitleEdit.sln /p:Configuration=Release /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll" -verbosity:m
 
 test_script:
-  - vstest.console "src\Tests\bin\%CONFIGURATION%\Tests.dll" /logger:Appveyor
+  # Run unit tests (excluding benchmarks)
+  - dotnet test tests\libse\LibSETests.csproj --configuration Release --no-build --logger "trx;LogFileName=libse-tests.trx"
+  - dotnet test tests\UI\UITests.csproj --configuration Release --no-build --logger "trx;LogFileName=ui-tests.trx"
 
-cache:
-  - 'packages -> **\src\ui\packages.config'
+after_test:
+  # Upload test results to AppVeyor
+  - ps: |
+      $testResults = Get-ChildItem -Path ".\tests" -Filter "*.trx" -Recurse
+      foreach ($testResult in $testResults) {
+        $wc = New-Object 'System.Net.WebClient'
+        $wc.UploadFile("https://ci.appveyor.com/api/testresults/mstest/$($env:APPVEYOR_JOB_ID)", $testResult.FullName)
+      }
 
-matrix:
-  fast_finish: true
